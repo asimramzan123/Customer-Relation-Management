@@ -1,5 +1,20 @@
 
 {% load static %}
+
+<style>
+.hello-msg{
+  margin-right : 15px;
+  font-size  : 18px;
+  color:#fff;
+}
+.logout{
+  margin-left : 3px;
+  font-size  : 18px;
+  color:#fff;
+}
+}
+
+</style>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
 
     {% comment %} <img src = '{% static "/images/wah_bbq.png "%}'> {% endcomment %}
@@ -23,5 +38,10 @@
 
       </ul>
     </div>
+
+    <span class = 'hello-msg'>Hello {{request.user}} </span>
+    <span class = 'logout'> 
+      <a href = '{% url 'login' %}'> Logout </a>
+      </span>
 
   </nav>
