@@ -40,7 +40,6 @@ class Product(models.Model):
 
 
 class Order(models.Model):
-    date_created = models.DateTimeField(auto_now_add=True, null=True)
 
     ORDER_PENDING = 'Pending'
     ORDER_OUT = 'Not in Stock'
@@ -55,6 +54,8 @@ class Order(models.Model):
     customer = models.ForeignKey(Customer, null=True, on_delete=models.SET_NULL )
     product = models.ForeignKey(Product, null=True, on_delete=models.SET_NULL)
     status = models.CharField(max_length=50,  null = True, choices= STATUS, default=ORDER_PENDING)
+    date_created = models.DateTimeField(auto_now_add=True, null=True)
+    note = models.CharField(max_length=50,  null = True,)
 
     def __str__(self) :
         return self.product.name
