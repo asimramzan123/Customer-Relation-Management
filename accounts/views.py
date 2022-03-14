@@ -6,19 +6,19 @@ from django.forms import inlineformset_factory
 from django.contrib import messages 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import Group
+
 
 from .models import *
 from .forms import OrderForm, CreateUserForm
 from .filters import OrderFilter
+from .decorators import admin_only, unauthenticated_user, allowed_users
 
 # Create your views here.
 
+@unauthenticated_user
 def register_page(request):
 
-    # if request.user.is_authenticated:
-    #     return redirect('home')
-
-    # else:
     form = CreateUserForm()
     context = {
         'form': form,
@@ -28,16 +28,17 @@ def register_page(request):
         form = CreateUserForm(request.POST)
 
         if form.is_valid():
-            form.save()
+            user = form.save()
 
             # getting user name to print in message
-            user = form.cleaned_data.get('username')
-            messages.success(request, 'Account was created for' + user)
+            username = form.cleaned_data.get('username')
+
+            group = Group.objects.get(name = 'customer')
+
+            user.groups.add(group)
+            messages.success(request, 'Account was created for: ' + username)
 
             return redirect('login')
-        else:
-            print('User was not created!')
-            print(form.errors)
 
     return render(request, 'accounts/register.html', context)
 
@@ -45,13 +46,9 @@ def register_page(request):
     like only after login user could see like products, customer etc.."""
 
 
+@unauthenticated_user
 def login_page(request):
  
-    # if request.user.is_authenticated:
-    #     return redirect('home')
-    
-    # else:
-
     if request.method == "POST":
         # getting username and password to authenticate
         username = request.POST.get('username')
@@ -69,15 +66,20 @@ def login_page(request):
     return render(request, 'accounts/login.html', context)
 
 
-# @login_required(login_url='login')
 def logout_page(request):
     logout(request)
     return redirect('login')
 
 
-@login_required(login_url='login')
-def home(request):
+def user_page(request):
+    context ={}
+    return render(request, 'accounts/user.html', context)
 
+
+@login_required(login_url='login')
+@admin_only
+def home(request):
+    
     """Rendering html pages"""
     orders = Order.objects.all()
     customers = Customer.objects.all()
@@ -97,12 +99,14 @@ def home(request):
 
 
 @login_required(login_url='login')
-def product(request):
+@allowed_users(allowed_roles=['Admin'])
+def products(request):
     products = Product.objects.all()
     return render(request, 'accounts/products.html', {'products': products})
 
 
 @login_required(login_url='login')
+@allowed_users(allowed_roles=['Admin'])
 def customer(request, pk_test):
 
     customer = Customer.objects.get(id = pk_test)
@@ -165,6 +169,7 @@ def create_order(request, pk):
 
 # creating update order method
 @login_required(login_url='login')
+@allowed_users(allowed_roles=['Admin'])
 def update_order(request, pk):
 
     order = Order.objects.get( id = pk) #using pk to prefetch prev data for updation
@@ -188,6 +193,7 @@ def update_order(request, pk):
 
 
 @login_required(login_url='login')
+@allowed_users(allowed_roles=['Admin'])
 def delete_order(request, pk):
     # form = OrderForm(instance = order) # creating instance to delete item
     order = Order.objects.get( id = pk) #using pk to delete specific item
