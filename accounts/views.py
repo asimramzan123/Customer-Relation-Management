@@ -1,3 +1,4 @@
+from urllib.parse import uses_query
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import UserCreationForm
@@ -10,11 +11,11 @@ from django.contrib.auth.models import Group
 
 
 from .models import *
-from .forms import OrderForm, CreateUserForm
+from .forms import OrderForm, CreateUserForm, CustomerForm
 from .filters import OrderFilter
 from .decorators import admin_only, unauthenticated_user, allowed_users
 
-# Create your views here.
+
 
 @unauthenticated_user
 def register_page(request):
@@ -33,9 +34,13 @@ def register_page(request):
             # getting user name to print in message
             username = form.cleaned_data.get('username')
 
-            group = Group.objects.get(name = 'customer')
-
+            """  
             user.groups.add(group)
+            # to assign customer new profile, we want user to have group and customer on create. 
+            Customer.objects.create(
+                user = user,
+                name = user.username)
+            """
             messages.success(request, 'Account was created for: ' + username)
 
             return redirect('login')
@@ -46,9 +51,10 @@ def register_page(request):
     like only after login user could see like products, customer etc.."""
 
 
+
 @unauthenticated_user
 def login_page(request):
- 
+
     if request.method == "POST":
         # getting username and password to authenticate
         username = request.POST.get('username')
@@ -71,15 +77,45 @@ def logout_page(request):
     return redirect('login')
 
 
+@login_required(login_url='login')
+@allowed_users(allowed_roles=['Customer'])
 def user_page(request):
-    context ={}
+
+    orders = request.user.Customer.order_set.all()
+    print('Orders:', orders)
+
+    total_orders = orders.count()
+    orders_delivered = orders.filter(status = 'Delivered').count()
+    orders_pending = orders.filter(status = 'Pending').count()
+
+    context ={'orders':orders,
+    'total_orders':total_orders,
+    'orders_delivered':orders_delivered,
+    'orders_pending':orders_pending
+    }
     return render(request, 'accounts/user.html', context)
+
+
+@login_required(login_url='login')
+@allowed_users(allowed_roles=['Customer'])
+def account_settings(request):
+    customer = request.user.customer
+    form = CustomerForm(instance=customer)
+    if request.method == 'POST':
+        form = CustomerForm(request.POST, request.FILES, instance=customer)
+        if form.is_valid:
+            form.save()
+            # return redirect('/')
+
+
+    context ={'form':form}
+    return render(request, 'accounts/account_setting.html', context)
 
 
 @login_required(login_url='login')
 @admin_only
 def home(request):
-    
+
     """Rendering html pages"""
     orders = Order.objects.all()
     customers = Customer.objects.all()
